@@ -17,6 +17,10 @@ class OpenAIService(
         .build()
 
     fun getAlternativeFoods(ingredient: String): List<SetListData> {
+        if (apiKey.isNullOrBlank()) {
+            return emptyList()
+        }
+
         val prompt = """
             사용자가 특정 재료 또는 성분을 피하려고 한다.
 
@@ -25,12 +29,15 @@ class OpenAIService(
 
             해당 성분이 들어가지 않은 대체 가능한 음식 5개를 추천해라.
 
-            응답은 반드시 JSON 배열만 반환해라.
-            각 항목은 다음 필드만 가진다:
-            - name: 음식 이름
-            - content: 추천 이유
+            반드시 아래 JSON 형식의 배열만 반환해라.
+            마크다운, 코드블록, 설명 문장은 절대 포함하지 마라.
 
-            다른 설명 문장은 절대 포함하지 마라.
+            [
+              {
+                "name": "음식 이름",
+                "content": "추천 이유"
+              }
+            ]
         """.trimIndent()
 
         val requestBody = mapOf(
@@ -43,16 +50,31 @@ class OpenAIService(
             .body(requestBody)
             .retrieve()
             .body(Map::class.java)
+            ?: return emptyList()
 
-        val output = response?.get("output") as List<*>
-        val firstOutput = output.first() as Map<*, *>
-        val content = firstOutput["content"] as List<*>
-        val firstContent = content.first() as Map<*, *>
-        val text = firstContent["text"].toString()
+        val output = response["output"] as? List<*> ?: return emptyList()
+        val firstOutput = output.firstOrNull() as? Map<*, *> ?: return emptyList()
+        val content = firstOutput["content"] as? List<*> ?: return emptyList()
+        val firstContent = content.firstOrNull() as? Map<*, *> ?: return emptyList()
+        val text = firstContent["text"]?.toString().orEmpty()
+
+        if (text.isBlank()) {
+            return emptyList()
+        }
+
+        val cleanedText = text
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
 
         val listType = objectMapper.typeFactory
             .constructCollectionType(List::class.java, SetListData::class.java)
 
-        return objectMapper.readValue(text, listType)
+        return runCatching<List<SetListData>> {
+            objectMapper.readValue(cleanedText, listType)
+        }.getOrElse {
+            emptyList()
+        }
     }
 }
