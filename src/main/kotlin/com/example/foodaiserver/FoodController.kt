@@ -1,6 +1,5 @@
 package com.example.foodaiserver
 
-import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -8,14 +7,19 @@ import org.springframework.web.bind.annotation.*
 class FoodController(
     private val openAIService: OpenAIService,
 ) {
-    @PostMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping
     fun getAlternativeFoods(
         @RequestBody request: IngredientRequest,
-    ): String {
-        return openAIService.getAlternativeFoodsJson(request.ingredient)
+    ): List<SetListData> {
+        return openAIService.getAlternativeFoods(request.ingredient)
     }
 }
 
 data class IngredientRequest(
     val ingredient: String,
+)
+
+data class SetListData(
+    val name: String,
+    val content: String,
 )
