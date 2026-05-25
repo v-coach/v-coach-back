@@ -49,7 +49,7 @@ class OpenAIService {
         """.trimIndent()
 
         val requestBody = mapOf(
-            "model" to "gpt-4.1-mini",
+            "model" to "gpt-5.5-mini",
             "input" to prompt
         )
 
